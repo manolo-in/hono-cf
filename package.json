@@ -1,15 +1,15 @@
 {
-	"name": "package",
-	"description": "Template for building packages",
-	"version": "0.0.1",
+	"name": "hono-cf",
+	"description": "Hono with out-of-the-box support for Cloudflare",
+	"version": "0.0.2",
 	"main": "./dist/index.js",
 	"module": "./dist/index.mjs",
 	"types": "./dist/index.d.ts",
 	"files": ["dist/**/*"],
 	"scripts": {
+	    "prepublishOnly": "bun run build",
 		"build": "tsdown",
-		"build:watch": "tsdown --watch",
-		"type-check": "tsc --noEmit"
+		"build:watch": "tsdown --watch"
 	},
 	"exports": {
 		"./package.json": "./package.json",
@@ -18,21 +18,22 @@
 			"import": "./dist/index.mjs",
 			"require": "./dist/index.js"
 		},
-		"./type": {
-			"types": "./dist/type.d.ts"
+		"./types": {
+			"types": "./dist/types.d.mts"
 		}
 	},
-	"dependencies": {},
+	"dependencies": {
+		"@cloudflare/workers-types": "^4.20251014.0",
+		"hono": "^4.10.4"
+	},
 	"devDependencies": {
-		"@types/bun": "^1.2.17",
 		"@types/node": "20.17.24",
-		"bun-plugin-dts": "^0.3.0",
 		"tsdown": "^0.15.10",
-		"typescript": "5.6.3",
-		"zod": "^3.25.67"
+		"typescript": "5.6.3"
 	},
 	"peerDependencies": {
-		"zod": "^3.0.0"
+		"@cloudflare/workers-types": "^4",
+		"hono": "^4.10.0"
 	},
 	"engines": {
 		"node": ">=18"
@@ -42,10 +43,10 @@
 	},
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/manolo-in/package.git"
+		"url": "git+https://github.com/manolo-in/hono-cf.git"
 	},
 	"bugs": {
-		"url": "https://github.com/manolo-in/package/issues"
+		"url": "https://github.com/manolo-in/hono-cf/issues"
 	},
-	"keywords": []
+	"keywords": ["hono", "cloudflare", "wrangler", "typescript"]
 }

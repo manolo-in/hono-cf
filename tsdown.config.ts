@@ -7,5 +7,11 @@ export default defineConfig([
         dts: {
             sourcemap: false
         },
-    }
+    },
+    {
+        entry: ["src/types.d.ts"],
+        dts: {
+            sourcemap: false
+        },
+    },
 ]);
