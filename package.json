@@ -1,15 +1,16 @@
 {
 	"name": "hono-cf",
 	"description": "Hono with out-of-the-box support for Cloudflare",
-	"version": "0.0.2",
+	"version": "0.0.3",
 	"main": "./dist/index.js",
 	"module": "./dist/index.mjs",
 	"types": "./dist/index.d.ts",
 	"files": ["dist/**/*"],
 	"scripts": {
-	    "prepublishOnly": "bun run build",
+		"prepublishOnly": "bun run build",
 		"build": "tsdown",
-		"build:watch": "tsdown --watch"
+		"build:watch": "tsdown --watch",
+		"test": "wrangler dev --test-scheduled"
 	},
 	"exports": {
 		"./package.json": "./package.json",
@@ -29,7 +30,8 @@
 	"devDependencies": {
 		"@types/node": "20.17.24",
 		"tsdown": "^0.15.10",
-		"typescript": "5.6.3"
+		"typescript": "5.6.3",
+		"wrangler": "^4.45.3"
 	},
 	"peerDependencies": {
 		"@cloudflare/workers-types": "^4",

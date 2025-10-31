@@ -43,6 +43,29 @@ export default app;
 npx wrangler dev
 ```
 
+### Variables
+
+```ts
+import { HonoCF } from "./src";
+import { CF_Bindings } from "./src/types";
+
+type Variables = {
+    db: string
+}
+
+const app = new HonoCF({
+    bindings: {
+        hyperdrive: ["HYPERDRIVE"]
+    } as const
+}).$type<Variables>()
+
+app.set("db", async (c) => c.env.HYPERDRIVE.connectionString);
+
+app.cron("* * * * *", async (c) => {
+    console.log(c.var.db)
+})
+```
+
 ### Resources
 
 Hono [Docs](https://hono.dev/docs/)
