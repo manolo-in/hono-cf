@@ -7,6 +7,7 @@ import type { BlankSchema, Schema, Variables } from "hono/types";
 import { CronHandler, CronStringType, defineCollection, DefineCron } from "./cron";
 import type { CF_Bindings, GenerateEnv } from "./types";
 import { CommonContext } from "./var";
+import { ExportedHandlerScheduledHandler } from "@cloudflare/workers-types";
 
 class HonoCF<
     V extends Variables = {},
@@ -61,7 +62,7 @@ class HonoCF<
 
         const cronJobs = defineCollection(this.cronCollection)
 
-        const c = {env, var: this.variables} as unknown as C
+        const c = { env, var: this.variables } as unknown as C
 
         await cronJobs
             .find(controller.cron)

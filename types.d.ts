@@ -1,5 +1,3 @@
-/// <reference types="@cloudflare/workers-types" />
-
 declare global {
     interface ObjectConstructor {
         keys<T>(obj: T): Array<keyof T>;
