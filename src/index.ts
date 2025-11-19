@@ -3,11 +3,10 @@ import { Hono as NormalHono } from "hono";
 import { createMiddleware } from "hono/factory";
 import type { HonoOptions } from "hono/hono-base";
 import type { BlankSchema, Schema, Variables } from "hono/types";
-
+import { ExportedHandlerScheduledHandler } from "@cloudflare/workers-types";
 import { CronHandler, CronStringType, defineCollection, DefineCron } from "./cron";
 import type { CF_Bindings, GenerateEnv } from "./types";
 import { CommonContext } from "./var";
-import { ExportedHandlerScheduledHandler } from "@cloudflare/workers-types";
 
 class HonoCF<
     V extends Variables = {},

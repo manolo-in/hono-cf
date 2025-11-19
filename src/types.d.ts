@@ -65,3 +65,4 @@ type ConvertFull<B extends CF_Bindings> =
 type CF_Bindings_Convertor<B extends Partial<CF_Bindings>> = ConvertFull<Required<B>>
 
 export type GenerateEnv<B extends CF_Bindings, V extends Variables> = { Bindings: CF_Bindings_Convertor<B>, Variables: V }
+export type * from "./var"
