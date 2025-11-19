@@ -1,83 +1,113 @@
-import type { Env } from "hono";
+import { ExportedHandlerScheduledHandler } from "@cloudflare/workers-types";
+import type { Env, ExecutionContext } from "hono";
 import { Hono as NormalHono } from "hono";
 import { createMiddleware } from "hono/factory";
 import type { HonoOptions } from "hono/hono-base";
-import type { BlankSchema, Schema, Variables } from "hono/types";
-import { ExportedHandlerScheduledHandler } from "@cloudflare/workers-types";
+import type { BlankSchema, HandlerInterface, MiddlewareHandlerInterface, OnHandlerInterface, Schema, Variables } from "hono/types";
 import { CronHandler, CronStringType, defineCollection, DefineCron } from "./cron";
 import type { CF_Bindings, GenerateEnv } from "./types";
 import { CommonContext } from "./var";
 
 class HonoCF<
-    V extends Variables = {},
-    B extends CF_Bindings = {},
-    E extends Env = GenerateEnv<B, V>,
-    S extends Schema = BlankSchema,
-    BasePath extends string = "/",
-    C extends CommonContext<E> = CommonContext<E>
+   V extends Variables = {},
+   B extends CF_Bindings = {},
+   E extends Env = GenerateEnv<B, V>,
+   S extends Schema = BlankSchema,
+   BasePath extends string = "/",
+   C extends CommonContext<E> = CommonContext<E>
 >
-    extends NormalHono<E, S, BasePath> {
-    private customOptions
+   extends NormalHono<E, S, BasePath> {
+   private secretHono
+   private customOptions
 
-    private cronCollection: DefineCron<C>[] = []
+   private cronCollection: DefineCron<C>[] = []
 
-    private variableHandlers = {} as { [K in keyof V]: (c: C) => Promise<V[K]> | V[K] }
-    private variables: V = {} as V
+   private variableHandlers = {} as { [K in keyof V]: (c: C) => Promise<V[K]> | V[K] }
+   private variables: V = {} as V
 
-    constructor(options?: {
-        bindings?: B
-        hono?: HonoOptions<E>
-    }) {
-        super({ strict: false, ...options?.hono })
-        this.customOptions = options
-    }
+   constructor(options?: {
+      bindings?: B
+      basePath?: string,
+      hono?: HonoOptions<E>
+   }) {
+      super({ strict: false, ...options?.hono })
+      this.customOptions = options
+      this.secretHono = options?.basePath
+         ? new NormalHono({ strict: false, ...options?.hono }).basePath(options.basePath)
+         : new NormalHono({ strict: false, ...options?.hono })
+   }
 
-    $type = <NV extends Variables>() => {
-        type newCustomOptionsType = HonoCF<NV, B>["customOptions"]
-        return new HonoCF<NV, B>(this.customOptions as newCustomOptionsType)
-    }
+   basePath<SubPath extends string>(path: SubPath) {
+      this.secretHono = this.secretHono.basePath(path)
+      return this.secretHono
+   }
 
-    alocateVariables = async (env: C["env"]) => {
-        for (const [name, handler] of Object.entries(this.variableHandlers)) {
-            this.variables[name] = await handler({
-                env,
-                var: this.variables
-            } as unknown as C)
-        }
-    }
+   fetch = (request: Request, Env?: E["Bindings"], executionCtx?: ExecutionContext) => {
+      return this.secretHono.fetch(request, Env, executionCtx)
+   }
 
-    cron = (cron: CronStringType, handler: CronHandler<C>) => {
-        this.cronCollection.push({ cron, handler })
-        return this
-    }
+   get = ((...props: any[]) => {
+      return this.secretHono.get(...props)
+   }) as HandlerInterface<E, "get", S, BasePath>
 
-    scheduled: ExportedHandlerScheduledHandler<E["Bindings"]> = async (
-        controller,
-        env,
-        ctx,
-    ) => {
+   post = ((...props: any[]) => {
+      return this.secretHono.post(...props)
+   }) as HandlerInterface<E, "post", S, BasePath>
 
-        await this.alocateVariables(env)
+   on = ((...props: [any, any, any]) => {
+      return this.secretHono.on(...props)
+   }) as OnHandlerInterface<E, S, BasePath>;
 
-        const cronJobs = defineCollection(this.cronCollection)
+   use = ((...props: any[]) => {
+      return this.secretHono.use(...props)
+   }) as MiddlewareHandlerInterface<E, S, BasePath>;
 
-        const c = { env, var: this.variables } as unknown as C
+   $type = <NV extends Variables>() => {
+      type newCustomOptionsType = HonoCF<NV, B>["customOptions"]
+      return new HonoCF<NV, B>(this.customOptions as newCustomOptionsType)
+   }
 
-        await cronJobs
-            .find(controller.cron)
-            .runOneByOne(c);
-    }
+   alocateVariables = async (env: C["env"]) => {
+      for (const [name, handler] of Object.entries(this.variableHandlers)) {
+         this.variables[name] = await handler({
+            env,
+            var: this.variables
+         } as unknown as C)
+      }
+   }
 
-    set = <N extends keyof V>(name: N, handler: (c: C) => Promise<V[N]> | V[N]) => {
-        this.variableHandlers[name] = handler
+   cron = (cron: CronStringType, handler: CronHandler<C>) => {
+      this.cronCollection.push({ cron, handler })
+      return this
+   }
 
-        const middleware = createMiddleware(async (c, next) => {
-            c.set(name as string, await handler(c as unknown as C))
-            await next();
-        })
+   scheduled: ExportedHandlerScheduledHandler<E["Bindings"]> = async (
+      controller,
+      env,
+      ctx,
+   ) => {
 
-        this.use(middleware)
-    }
+      await this.alocateVariables(env)
+
+      const cronJobs = defineCollection(this.cronCollection)
+
+      const c = { env, var: this.variables } as unknown as C
+
+      await cronJobs
+         .find(controller.cron)
+         .runOneByOne(c);
+   }
+
+   set = <N extends keyof V>(name: N, handler: (c: C) => Promise<V[N]> | V[N]) => {
+      this.variableHandlers[name] = handler
+
+      const middleware = createMiddleware(async (c, next) => {
+         c.set(name as string, await handler(c as unknown as C))
+         await next();
+      })
+
+      this.secretHono.use(middleware)
+   }
 }
 
 export { HonoCF };

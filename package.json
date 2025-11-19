@@ -1,7 +1,7 @@
 {
 	"name": "hono-cf",
 	"description": "Hono with out-of-the-box support for Cloudflare",
-	"version": "0.0.5",
+	"version": "0.0.6",
 	"main": "./dist/index.js",
 	"module": "./dist/index.mjs",
 	"types": "./dist/index.d.ts",
