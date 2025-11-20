@@ -13,7 +13,7 @@ export type CronCollection<T extends unknown> = DefineCron<T>[]
 
 export const defineCollection = <T extends unknown>(collection: CronCollection<T>) => {
     const find = (code: string) => {
-        const handlers: DefineCron<T>["handler"][] = collection.map(c => c.handler)
+        const handlers: DefineCron<T>["handler"][] = collection.filter(e => e.cron === code).map(c => c.handler)
 
         if (handlers.length === 0)
             throw new Error(`Cron job not found for code: ${code}`)

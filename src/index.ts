@@ -93,9 +93,11 @@ class HonoCF<
 
       const c = { env, var: this.variables } as unknown as C
 
-      await cronJobs
-         .find(controller.cron)
-         .runOneByOne(c);
+      ctx.waitUntil(
+         cronJobs
+            .find(controller.cron)
+            .runOneByOne(c)
+      )
    }
 
    set = <N extends keyof V>(name: N, handler: (c: C) => Promise<V[N]> | V[N]) => {
