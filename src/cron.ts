@@ -1,3 +1,7 @@
+// Cron pattern type support
+// Currently supports: "*" (any) and numeric values (e.g., "0", "12", "23")
+// Future support planned for: ranges (0-5), steps (*/15), lists (1,3,5)
+// Note: Cloudflare supports full cron syntax - validation happens at runtime
 type CronInstance = "*" | `${number}` // | `${number}/${number}` | `${number}-${number}` | `${number}-${number}/${number}`
 
 export type CronStringType = `${CronInstance} ${CronInstance} ${CronInstance} ${CronInstance} ${CronInstance}` // | ({} & string)
@@ -27,8 +31,18 @@ export const defineCollection = <T extends unknown>(collection: CronCollection<T
                 }
             },
             runOneByOne: async (ctx: T) => {
+                const errors: Error[] = []
                 for (const handler of handlers) {
-                    await handler(ctx)
+                    try {
+                        await handler(ctx)
+                    } catch (error) {
+                        console.error('[HonoCF] Cron handler failed:', error)
+                        errors.push(error instanceof Error ? error : new Error(String(error)))
+                    }
+                }
+                // If any handlers failed, throw an aggregate error
+                if (errors.length > 0) {
+                    throw new Error(`${errors.length} cron handler(s) failed: ${errors.map(e => e.message).join(', ')}`)
                 }
             },
             runConcurrently: async (ctx: T) =>
