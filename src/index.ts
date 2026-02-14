@@ -24,6 +24,7 @@ class HonoCF<
 
    private variableHandlers = {} as { [K in keyof V]: (c: C) => Promise<V[K]> | V[K] }
    private variables: V = {} as V
+   private setKeys = new Set<keyof V>()
 
    constructor(options?: {
       bindings?: B
@@ -39,7 +40,7 @@ class HonoCF<
 
    basePath<SubPath extends string>(path: SubPath) {
       this.secretHono = this.secretHono.basePath(path)
-      return this.secretHono
+      return this
    }
 
    fetch = (request: Request, Env?: E["Bindings"], executionCtx?: ExecutionContext) => {
@@ -67,13 +68,24 @@ class HonoCF<
       return new HonoCF<NV, B>(this.customOptions as newCustomOptionsType)
    }
 
-   alocateVariables = async (env: C["env"]) => {
+   allocateVariables = async (env: E["Bindings"]) => {
+      // Create a fresh variables object for this execution context to avoid race conditions
+      const localVariables: Partial<V> = {}
+      
       for (const [name, handler] of Object.entries(this.variableHandlers)) {
-         this.variables[name] = await handler({
-            env,
-            var: this.variables
-         } as unknown as C)
+         try {
+            localVariables[name as keyof V] = await handler({
+               env,
+               var: localVariables as V
+            } as unknown as C)
+         } catch (error) {
+            console.error(`[HonoCF] Failed to allocate variable "${name}":`, error)
+            throw error
+         }
       }
+      
+      // Only update shared state after all variables are allocated successfully
+      this.variables = localVariables as V
    }
 
    cron = (cron: CronStringType, handler: CronHandler<C>) => {
@@ -86,25 +98,40 @@ class HonoCF<
       env,
       ctx,
    ) => {
+      try {
+         await this.allocateVariables(env)
 
-      await this.alocateVariables(env)
+         const cronJobs = defineCollection(this.cronCollection)
 
-      const cronJobs = defineCollection(this.cronCollection)
+         const c = { env, var: this.variables } as unknown as C
 
-      const c = { env, var: this.variables } as unknown as C
-
-      ctx.waitUntil(
-         cronJobs
-            .find(controller.cron)
-            .runOneByOne(c)
-      )
+         await ctx.waitUntil(
+            cronJobs
+               .find(controller.cron)
+               .runOneByOne(c)
+         )
+      } catch (error) {
+         console.error('[HonoCF] Scheduled job failed:', error)
+         throw error
+      }
    }
 
    set = <N extends keyof V>(name: N, handler: (c: C) => Promise<V[N]> | V[N]) => {
+      // Prevent duplicate middleware registration
+      if (this.setKeys.has(name)) {
+         console.warn(`[HonoCF] Variable "${String(name)}" is being overwritten`)
+      }
+      
       this.variableHandlers[name] = handler
+      this.setKeys.add(name)
 
       const middleware = createMiddleware(async (c, next) => {
-         c.set(name as string, await handler(c as unknown as C))
+         try {
+            c.set(name as string, await handler(c as unknown as C))
+         } catch (error) {
+            console.error(`[HonoCF] Failed to set variable "${String(name)}":`, error)
+            throw error
+         }
          await next();
       })
 
